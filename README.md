@@ -38,11 +38,13 @@ IPMI fallback is available for older servers without Redfish support (any IPMI 2
 
 ```mermaid
 graph TB
-    subgraph Clients["API Clients"]
-        UI["Web UI"]
-        CLI["CLI"]
-        Prom["Prometheus"]
-    end
+    CLI["CLI / Scripts"]
+    Prom["Prometheus"]
+    Ext["External Automation"]
+
+    CLI -->|REST API| API
+    Prom -->|GET /metrics| API
+    Ext -->|REST API| API
 
     subgraph API["FastAPI — REST + WebSocket"]
         direction TB
@@ -79,7 +81,6 @@ graph TB
 
     DB[("PostgreSQL 16\nasync via asyncpg")]
 
-    Clients -->|REST / WebSocket| API
     Modules --> WF
     WF --> Integrations
     RF --> BMC1
