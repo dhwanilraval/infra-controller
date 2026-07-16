@@ -1,36 +1,64 @@
 # Infra Controller
 
-Bare-metal lifecycle management platform built on Redfish. Vendor-agnostic server provisioning, monitoring, and orchestration through a single REST API.
+Bare-metal lifecycle management platform built on Redfish. Vendor-agnostic server discovery, provisioning, monitoring, and orchestration through a single REST API.
 
-Manages the full lifecycle — from discovering a server's BMC on the network, through hardware configuration, OS installation, firmware compliance, to decommissioning — without requiring Kubernetes, NVIDIA hardware, or any specific vendor stack.
+Manages the full server lifecycle — from discovering a BMC on the network, through hardware configuration and OS installation, to firmware compliance and decommissioning.
 
-## Why Not NICo or Metal³?
+## Features
 
-| Concern | Infra Controller | NVIDIA NICo | Metal³ |
-|---|---|---|---|
-| Vendor lock-in | None — standard Redfish | Requires NVIDIA DPU/GPU | Requires K8s cluster |
-| OS coverage | RHEL, Windows, ESXi, CoreOS | Linux-focused | Linux only |
-| IPAM/DHCP | Integrates with Infoblox | Built-in (conflicts) | Built-in dnsmasq (conflicts) |
-| Auth | Entra ID (Azure AD) native | Keycloak (separate IdP) | K8s RBAC only |
-| Deployment | Single container + Postgres | Microservices + Temporal | K8s operator stack |
+- **Vendor-agnostic BMC communication** — Redfish (DMTF standard) as the primary interface with IPMI fallback for legacy hardware
+- **Multi-OS provisioning** — RHEL/Ubuntu via Red Hat Satellite, Windows via MECM, VMware ESXi via vCenter, CoreOS/Flatcar via Ignition
+- **Hardware inventory** — CPU, memory, storage, NIC, GPU, and TPM discovery across any Redfish-compliant server
+- **Workflow engine** — Multi-step orchestration with checkpoint-based retry/resume and user-defined custom workflows
+- **Firmware compliance** — Define version baselines per vendor/model, run fleet-wide drift detection
+- **Multi-tenant isolation** — Organization → Project hierarchy with role-based access (owner/admin/operator/viewer)
+- **Prometheus metrics** — Unauthenticated `/metrics` endpoint for fleet monitoring integration
+- **Real-time events** — WebSocket streaming + event history API
+- **Entra ID (Azure AD) auth** — Group-to-role RBAC mapping, plus local JWT and open modes
+- **85 REST endpoints** across 16 API modules
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    FastAPI (REST + WebSocket)            │
-├──────────┬──────────┬───────────┬──────────┬────────────┤
-│ Machines │ Firmware │ Provision │ Tenants  │ Monitoring │
-│ GPU/TPM  │ Compli.  │ Workflows │ Org/Proj │ Metrics    │
-├──────────┴──────────┴───────────┴──────────┴────────────┤
-│                   Workflow Engine                        │
-│            (retry/resume, checkpoints, custom steps)     │
-├──────────┬──────────┬───────────┬──────────┬────────────┤
-│ Redfish  │  IPMI    │ Satellite │  MECM    │  vCenter   │
-│ Client   │ Fallback │ (RHEL)    │ (Win)    │  (ESXi)    │
-├──────────┴──────────┴───────────┴──────────┴────────────┤
-│                PostgreSQL (async via asyncpg)            │
-└─────────────────────────────────────────────────────────┘
+                              ┌──────────────────────┐
+                              │     API Clients       │
+                              │  (UI, CLI, Prometheus)│
+                              └──────────┬───────────┘
+                                         │
+                                    REST / WebSocket
+                                         │
+┌────────────────────────────────────────┼────────────────────────────────────────┐
+│                                   FastAPI                                       │
+│                                                                                 │
+│  ┌─────────┐ ┌─────────┐ ┌───────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ │
+│  │Machines │ │  GPU    │ │Provisioning│ │ Firmware │ │ Tenants │ │Dashboard │ │
+│  │ Power   │ │  TPM    │ │ Profiles  │ │Compliance│ │Org/Proj │ │ Metrics  │ │
+│  │ BIOS    │ │  IPMI   │ │ Jobs      │ │Baselines │ │ Members │ │ Events   │ │
+│  │ Storage │ │  PCIe   │ │ Callback  │ │ Reports  │ │ RBAC    │ │ Auth     │ │
+│  └────┬────┘ └────┬────┘ └─────┬─────┘ └────┬─────┘ └────┬────┘ └────┬─────┘ │
+│       │           │            │             │            │           │        │
+│  ┌────┴───────────┴────────────┴─────────────┴────────────┴───────────┴─────┐  │
+│  │                          Workflow Engine                                  │  │
+│  │              Checkpoint-based retry/resume, custom steps                  │  │
+│  └──┬──────────┬──────────────┬──────────────┬──────────────┬────────────┘   │
+│     │          │              │              │              │                 │
+│  ┌──┴───┐  ┌──┴───┐  ┌──────┴─────┐  ┌────┴────┐  ┌─────┴─────┐           │
+│  │Redfish│  │ IPMI │  │  Satellite │  │  MECM   │  │  vCenter  │           │
+│  │Client │  │Client│  │  (RHEL)    │  │ (Win)   │  │  (ESXi)   │           │
+│  └──┬────┘  └──┬───┘  └──────┬─────┘  └────┬────┘  └─────┬─────┘           │
+│     │          │              │              │              │                 │
+└─────┼──────────┼──────────────┼──────────────┼──────────────┼─────────────────┘
+      │          │              │              │              │
+      ▼          ▼              ▼              ▼              ▼
+  ┌────────┐ ┌───────┐  ┌───────────┐  ┌──────────┐  ┌──────────┐
+  │  BMC   │ │  BMC  │  │ Satellite │  │  MECM    │  │ vCenter  │
+  │Redfish │ │ IPMI  │  │  Server   │  │  Server  │  │  Server  │
+  └────────┘ └───────┘  └───────────┘  └──────────┘  └──────────┘
+
+                              ┌──────────────────────┐
+                              │     PostgreSQL 16     │
+                              │   (async via asyncpg) │
+                              └──────────────────────┘
 ```
 
 ## Tech Stack
@@ -264,7 +292,7 @@ All settings use the `IC_` environment variable prefix.
 
 ```
 DISCOVERED → ENROLLING → ENROLLED → PROVISIONING → READY → IN_USE
-                                                        ↓
+                                                       ↓
                                     MAINTENANCE ← ← ← ←
                                         ↓
                                   DECOMMISSIONING → DECOMMISSIONED
