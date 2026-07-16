@@ -38,13 +38,9 @@ IPMI fallback is available for older servers without Redfish support (any IPMI 2
 
 ```mermaid
 graph TB
-    CLI["CLI / Scripts"]
-    Prom["Prometheus"]
-    Ext["External Automation"]
+    Zephyr["Zephyr"]
 
-    CLI -->|REST API| API
-    Prom -->|GET /metrics| API
-    Ext -->|REST API| API
+    Zephyr -->|REST API| API
 
     subgraph API["FastAPI — REST + WebSocket"]
         direction TB
