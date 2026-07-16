@@ -4,18 +4,18 @@ Bare-metal lifecycle management platform built on Redfish. Vendor-agnostic serve
 
 Manages the full server lifecycle — from discovering a BMC on the network, through hardware configuration and OS installation, to firmware compliance and decommissioning.
 
-## Features
+## Capabilities
 
-- **Vendor-agnostic BMC communication** — Redfish (DMTF standard) as the primary interface with IPMI fallback for legacy hardware
-- **Multi-OS provisioning** — RHEL/Ubuntu via Red Hat Satellite, Windows via MECM, VMware ESXi via vCenter, CoreOS/Flatcar via Ignition
-- **Hardware inventory** — CPU, memory, storage, NIC, GPU, and TPM discovery across any Redfish-compliant server
-- **Workflow engine** — Multi-step orchestration with checkpoint-based retry/resume and user-defined custom workflows
-- **Firmware compliance** — Define version baselines per vendor/model, run fleet-wide drift detection
-- **Multi-tenant isolation** — Organization → Project hierarchy with role-based access (owner/admin/operator/viewer)
-- **Prometheus metrics** — Unauthenticated `/metrics` endpoint for fleet monitoring integration
-- **Real-time events** — WebSocket streaming + event history API
-- **Entra ID (Azure AD) auth** — Group-to-role RBAC mapping, plus local JWT and open modes
-- **85 REST endpoints** across 16 API modules
+1. **Discover & Enroll** — Auto-detect servers on the network, inventory all hardware (CPU, memory, storage, NIC, GPU, TPM) via Redfish with IPMI fallback
+2. **Provision Any OS** — RHEL via Satellite, Windows via MECM, ESXi via vCenter, CoreOS via Ignition — one API call, reusable profiles
+3. **Manage BMC Remotely** — Power control, BIOS configuration, boot order, RAID setup, virtual media mount, Secure Boot, firmware updates
+4. **Firmware Compliance** — Define version baselines per vendor/model, detect drift, fleet-wide scanning with reports
+5. **Workflow Orchestration** — Multi-step operations with checkpoint-based retry/resume, plus user-defined custom workflows
+6. **Post-Provision Customization** — Ansible playbooks for OS hardening, K8s join, monitoring agents, network config — chained in workflows
+7. **Multi-Tenant Isolation** — Organization → Project hierarchy with role-based access (owner/admin/operator/viewer)
+8. **Auth & Security** — Entra ID (Azure AD) with group RBAC, TPM inventory, Secure Boot management, encrypted credential store
+9. **Fleet Observability** — Prometheus metrics, WebSocket events, dashboard summaries, sensor monitoring, system event logs
+10. **Vendor-Agnostic** — Works with Dell, HPE, Lenovo, Supermicro, Cisco, Inspur, Huawei, Fujitsu — any Redfish-compliant server
 
 ## Supported Hardware
 
