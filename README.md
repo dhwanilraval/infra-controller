@@ -343,6 +343,76 @@ Features:
 - **Checkpoints** — Each completed step is persisted; failed workflows restart from the failure point
 - **Background execution** — Workflows run asynchronously, poll via API or watch via WebSocket
 
+## Ansible Customization
+
+Post-provisioning configuration is handled through Ansible playbooks. Enable with `IC_ANSIBLE_ENABLED=true` and place playbooks in the configured directory (`IC_ANSIBLE_PLAYBOOK_DIR`, default `./playbooks`).
+
+### Running Playbooks
+
+```bash
+# List available playbooks
+curl http://localhost:8000/api/v1/ansible/playbooks
+
+# Run a playbook against a machine
+curl -X POST http://localhost:8000/api/v1/ansible/42/run \
+  -H "Content-Type: application/json" \
+  -d '{"playbook": "harden-os", "extra_vars": {"ntp_server": "10.0.0.1"}}'
+```
+
+The machine's BMC credentials (`bmc_ip`, `bmc_user`, `bmc_pass`) are automatically injected as extra vars — playbooks don't need to hardcode connection details.
+
+### Example Playbooks
+
+| Playbook | Purpose |
+|---|---|
+| `harden-os.yml` | CIS benchmarks, SSH hardening, firewall rules |
+| `install-gpu-drivers.yml` | NVIDIA CUDA toolkit + driver install |
+| `join-k8s.yml` | kubeadm/k3s/RKE2 cluster join |
+| `configure-monitoring.yml` | Deploy node_exporter, promtail, etc. |
+| `setup-storage.yml` | LVM, mount points, NFS/iSCSI clients |
+| `network-config.yml` | Bond interfaces, VLAN tagging, MTU settings |
+| `security-baseline.yml` | TPM enrollment, certificate provisioning, SELinux |
+| `decommission.yml` | Wipe disks, remove from AD/DNS, revoke certs |
+
+### Playbook Structure
+
+```yaml
+# playbooks/join-k8s.yml
+---
+- name: Join Kubernetes cluster
+  hosts: all
+  become: true
+  vars:
+    k8s_version: "1.30"
+    cluster_api: "{{ k8s_api_server }}"
+    join_token: "{{ k8s_join_token }}"
+  tasks:
+    - name: Install kubeadm
+      apt:
+        name: "kubeadm={{ k8s_version }}.*"
+        state: present
+
+    - name: Join cluster
+      command: >
+        kubeadm join {{ cluster_api }}
+        --token {{ join_token }}
+        --discovery-token-ca-cert-hash {{ ca_hash }}
+      args:
+        creates: /etc/kubernetes/kubelet.conf
+```
+
+Pass cluster-specific values via `extra_vars` at runtime — the same playbook works across different clusters and environments.
+
+### Workflow Integration
+
+Ansible playbooks can be chained as steps in custom workflows. A typical post-provision flow:
+
+```
+OS Provisioned → harden-os → configure-monitoring → join-k8s → Machine READY
+```
+
+Each step runs as part of the workflow engine with checkpoint/retry support — if `join-k8s` fails, the workflow resumes from that step without re-running the earlier playbooks.
+
 ## Prometheus Metrics
 
 Scrape `/metrics` (unauthenticated) for fleet monitoring:
