@@ -17,6 +17,23 @@ Manages the full server lifecycle — from discovering a BMC on the network, thr
 - **Entra ID (Azure AD) auth** — Group-to-role RBAC mapping, plus local JWT and open modes
 - **85 REST endpoints** across 16 API modules
 
+## Supported Hardware
+
+Infra Controller works with any server that exposes a Redfish-compliant BMC. Tested and supported vendors:
+
+| Vendor | Platforms | BMC |
+|---|---|---|
+| **Dell** | PowerEdge (R750, R7525, R650, R640, etc.) | iDRAC 9 / iDRAC 8 |
+| **HPE** | ProLiant (DL360, DL380, DL560, etc.) | iLO 5 / iLO 6 |
+| **Lenovo** | ThinkSystem (SR630, SR650, SR670, etc.) | XClarity Controller (XCC) |
+| **Supermicro** | X11, X12, X13 series | SMC BMC / Redfish |
+| **Cisco** | UCS C-Series (C220, C240, C480, etc.) | Cisco IMC |
+| **Inspur** | NF5280, NF5468, SA5248, etc. | Inspur BMC |
+| **Huawei** | FusionServer (2288H, 2488H, etc.) | iBMC |
+| **Fujitsu** | PRIMERGY (RX2530, RX2540, etc.) | iRMC S5 / S6 |
+
+IPMI fallback is available for older servers without Redfish support (any IPMI 2.0 compliant BMC).
+
 ## Architecture
 
 ```mermaid
