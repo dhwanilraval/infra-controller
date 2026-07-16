@@ -56,34 +56,15 @@ graph TB
         WF["Workflow Engine — checkpoint-based retry/resume, custom steps"]
     end
 
-    subgraph Integrations["Integration Clients"]
-        direction LR
-        RF["Redfish Client\n(DMTF standard)"]
-        IP["IPMI Client\n(pyghmi)"]
-        SAT["Satellite Client\n(Foreman API)"]
-        MECM["MECM Client\n(AdminService)"]
-        VC["vCenter Client\n(vSphere API)"]
-        IGN["Ignition\nGenerator"]
-    end
+    INT["Redfish · IPMI · Satellite · MECM · vCenter · Ignition"]
 
-    subgraph External["External Systems"]
-        direction LR
-        BMC1["BMC\nRedfish"]
-        BMC2["BMC\nIPMI"]
-        SAT_S["Red Hat\nSatellite"]
-        MECM_S["Microsoft\nMECM"]
-        VC_S["VMware\nvCenter"]
-    end
+    EXT["BMC Redfish · BMC IPMI · Red Hat Satellite · Microsoft MECM · VMware vCenter"]
 
     DB[("PostgreSQL 16\nasync via asyncpg")]
 
     Modules --> WF
-    WF --> Integrations
-    RF --> BMC1
-    IP --> BMC2
-    SAT --> SAT_S
-    MECM --> MECM_S
-    VC --> VC_S
+    WF --> INT
+    INT --> EXT
     API --> DB
 ```
 
